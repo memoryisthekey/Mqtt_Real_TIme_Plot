@@ -15,6 +15,6 @@ while(True):
 
     i +=1
     j -=2
-    publisher.publish_data([0, 0,a, b, 0, 0])
+    publisher.publish_data([b, 0,a])# b, 0, 0])
 
     time.sleep(0.05)

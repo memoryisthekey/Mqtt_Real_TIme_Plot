@@ -4,13 +4,23 @@ from paho.mqtt import client as mqtt_client
 import matplotlib.pyplot as plt
 import threading
 import matplotlib
+# This line is to avoid screen focus stealing on my pc
 matplotlib.use("TkAgg")
 
-#import paho.mqtt.client as mqtt_client
-data = {"time": [], "fx": [], "fy": [], "fz": [], "tx": [], "ty": [], "tz": []}
 
 # Define a mutex
 mutex = threading.Lock()
+
+data = {"time": []}#, "fx": [], "fy": [], "fz": [], "tx": [], "ty": [], "tz": []}
+
+
+def set_data_structure(format=["fx", "fy", "fz", "tx", "ty", "tz"]):
+    for name in format:
+        with mutex:
+            data[name] = []
+    print(data)
+
+
 
 class MqttPublisher(abc.ABC):
     """
@@ -94,14 +104,13 @@ class MqttSubcriber(abc.ABC):
 
             payload = json.loads(message.payload.decode('utf-8'))
             self.data_holder = payload
+            i = 0
             with mutex:
                 data["time"].append(len(data["time"]))  # Use the time step as the x-coordinate
-                data["fx"].append(self.data_holder[0][0])
-                data["fy"].append(self.data_holder[0][1])
-                data["fz"].append(self.data_holder[0][2])
-                data["tx"].append(self.data_holder[0][3])
-                data["ty"].append(self.data_holder[0][4])
-                data["tz"].append(self.data_holder[0][5])
+                for value in data:
+                    if value != "time":
+                        data[value].append(self.data_holder[0][i])
+                        i+=1
 
             #print("Inside", self.data_holder)
             #print("Received data:", payload)
@@ -117,6 +126,7 @@ class Plot2D():
         self.ordered_variables_names = ordered_variables_names
         self.data_holder = []
         self.fig, self.axes = plt.subplots(2, 1, sharex=True)
+        #self.fig, self.axes = plt.subplots()
         for name in self.ordered_variables_names:
                 self.data_dict[name] = list()
     
@@ -128,24 +138,25 @@ class Plot2D():
             exit()
         plt.clf()  # Clear the previous plot    
             # Plot the force and torque data
-        plt.subplot(211)
+        #plt.subplot(211)
         with mutex:
-            plt.plot(data["time"], data["fx"], label='Fx')
-            plt.plot(data["time"], data["fy"], label='Fy')
-            plt.plot(data["time"], data["fz"], label='Fz')  
+            for value in data:
+                if value != "time":
+                    plt.plot(data["time"], data[value], label=value)
+
         plt.xlabel('Time Step')
         plt.ylabel('Force')
         plt.title('Real-time Force Plot')
         plt.legend()    
-        plt.subplot(212)
-        with mutex:
-            plt.plot(data["time"], data["tx"], label='Tx')
-            plt.plot(data["time"], data["ty"], label='Ty')
-            plt.plot(data["time"], data["tz"], label='Tz')  
-            plt.xlabel('Time Step')
-        plt.ylabel('Torque')
-        plt.title('Real-time Torque Plot')
-        plt.legend()    
+        #plt.subplot(212)
+        #with mutex:
+        #    plt.plot(data["time"], data["tx"], label='Tx')
+        #    plt.plot(data["time"], data["ty"], label='Ty')
+        ##    plt.plot(data["time"], data["tz"], label='Tz')  
+        ##    plt.xlabel('Time Step')
+        #plt.ylabel('Torque')
+        #plt.title('Real-time Torque Plot')
+        #plt.legend()    
         plt.pause(0.01)
 
 

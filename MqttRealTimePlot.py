@@ -120,18 +120,11 @@ class MqttSubcriber(abc.ABC):
 
 
 class Plot2D():
-    def __init__(self, ordered_variables_names = ["fx", "fy", "fz", "tx", "ty", "tz"]):
-        self.data_dict = {}
-        self.data_dict["time"] = []
-        self.ordered_variables_names = ordered_variables_names
-        self.data_holder = []
+    def __init__(self, plot_title = 'Real-time Force Plot', y_label ='Force' , x_label = 'Time Step'):
+        self.x_label = x_label
+        self.y_label = y_label
+        self.plot_title = plot_title
         self.fig, self.axes = plt.subplots(2, 1, sharex=True)
-        #self.fig, self.axes = plt.subplots()
-        for name in self.ordered_variables_names:
-                self.data_dict[name] = list()
-    
-
-
 
     def plot(self):
         if not plt.fignum_exists(self.fig.number):
@@ -144,9 +137,9 @@ class Plot2D():
                 if value != "time":
                     plt.plot(data["time"], data[value], label=value)
 
-        plt.xlabel('Time Step')
-        plt.ylabel('Force')
-        plt.title('Real-time Force Plot')
+        plt.xlabel(self.x_label)
+        plt.ylabel(self.y_label)
+        plt.title(self.plot_title)
         plt.legend()    
         #plt.subplot(212)
         #with mutex:

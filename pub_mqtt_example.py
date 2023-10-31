@@ -1,6 +1,6 @@
 from MqttRealTimePlot import  MqttPublisher, MqttSubcriber, Plot2D
 import time
-publisher = MqttPublisher("topic")
+publisher = MqttPublisher("forcetorque")
 import numpy as np
 time.sleep(2.0)
 
@@ -15,6 +15,6 @@ while(True):
 
     i +=1
     j -=2
-    publisher.publish_data([b, 0,a])# b, 0, 0])
+    publisher.publish_data([b, 0,a, 0, -b, b])# b, 0, 0])
 
     time.sleep(0.05)

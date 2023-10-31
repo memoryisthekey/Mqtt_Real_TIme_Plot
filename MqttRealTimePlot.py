@@ -12,19 +12,34 @@ matplotlib.use("TkAgg")
 # Define a mutex
 mutex = threading.Lock()
 
+#todo Improve using singletons?
+# Global Variable
 data = {"time": []}#, "fx": [], "fy": [], "fz": [], "tx": [], "ty": [], "tz": []}
+data3D =[]
 
-
+# Function that will set the data 
 def set_data_structure(format=["fx", "fy", "fz", "tx", "ty", "tz"]):
     if len(format) != len(set(format)):
         raise ValueError("Repeated names are not allowed")
     if format.count("time") > 0:
         raise ValueError("Name \'time\' is not allowed")
-
     for name in format:
         with mutex:
             data[name] = []
     #print(data)
+
+def set_3Ddata_structure(format=[["x1", "y1", "z1"], ["x2", "y2", "z2"]]):
+    for i in range(len(format)):
+        if len(format[0][i]) != len(set(format[0][i])):
+            raise ValueError("Repeated names are not allowed")
+    #print(len(format))
+    for i in range(len(format)):
+        dictionary = dict()
+        for name in format[i]:
+            dictionary[name] = []
+        data3D.append(dictionary)
+    #print(data3D)
+
 
 
 
@@ -83,11 +98,11 @@ class MqttSubcriber(abc.ABC):
         port        (int, optional): Port on which to publish. Default is 1883
         topic       (string): Topic name to publish to
         client_id   (string, optional): Unique identifier of client for MQTT broker. Default is "unique_id_sub"
-
+        d3          (bool, optional): This flag will tell our subscriber if the data is 3D or 2D. Default False --> 2D
     Returns:
         string: Doens't directly return a value, but will set the values in global "data"
     """
-    def __init__(self, topic="default/topic", broker="localhost", port=1883, client_id ="unique_id_sub"):
+    def __init__(self, topic="default/topic", broker="localhost", port=1883, client_id ="unique_id_sub", d3 = False):
         self.broker = broker
         self.port = port
         self.topic = topic
@@ -95,6 +110,7 @@ class MqttSubcriber(abc.ABC):
         self.client = mqtt_client.Client()
         self.client.on_message = self.on_message
         self.data_holder = []
+        self.three_d_flag = d3
 
         self.subscribe()
 
@@ -111,13 +127,20 @@ class MqttSubcriber(abc.ABC):
             payload = json.loads(message.payload.decode('utf-8'))
             self.data_holder = payload
             i = 0
-            with mutex:
-                data["time"].append(len(data["time"]))  # Use the time step as the x-coordinate
-                for value in data:
-                    if value != "time":
-                        data[value].append(self.data_holder[0][i])
-                        i+=1
-
+            if(not self.three_d_flag):
+                with mutex:
+                    data["time"].append(len(data["time"]))  # Use the time step as the x-coordinate
+                    for value in data:
+                        if value != "time":
+                            data[value].append(self.data_holder[0][i])
+                            i+=1
+            else:
+                for i in range(len(payload)):
+                    with mutex:
+                        key_list = list(data3D[i].keys())
+                        for name, key in zip(payload[i], key_list):
+                            data3D[i][key] = name
+                #print(data3D)
             #print("Inside", self.data_holder)
             #print("Received data:", payload)
 
@@ -163,8 +186,8 @@ class Plot2D:
         plt.legend(loc="upper right")      
         plt.pause(0.01)
 
-
 class DynamicPlot2D:
+
     """
     A multi plot dynamic wrapper class for 2D plotting. 
 
@@ -242,6 +265,7 @@ class DynamicPlot2D:
         
 
     def plot(self):
+
         """
         This method calls split_data() to divide our global data structure for plotting and then does 1 step for plotting
         Args:
@@ -267,5 +291,39 @@ class DynamicPlot2D:
             self.axs[i].legend(loc="upper right")
         self.axs[i].set_xlabel('Time Step')
         plt.title(self.plot_title)
+
+        plt.pause(0.01)
+
+
+class Plot3DQuiver:
+
+    def __init__(self, colors=['g', 'r'], labels=['Surface Normal', 'Force'], xlim = 0.5, ylim = 0.5, zlim = 1):
+        self.fig, self.axes = plt.subplots(subplot_kw=dict(projection="3d"))
+        self.num_quivers = len(data3D)
+        #todo: check if colors and labels are the correct size according to the data3D len
+        self.colors = colors
+        self.labels = labels
+        self.x_lim = xlim
+        self.y_lim = ylim
+        self.z_lim = zlim
+
+   
+    def plot(self):
+        if not plt.fignum_exists(self.fig.number):
+            exit()
+
+
+        self.axes.clear()
+        for i in range(len(data3D)):
+            key_list = list(data3D[i].keys())
+            self.axes.quiver(0,0,0, data3D[i][key_list[0]], data3D[i][key_list[1]], data3D[i][key_list[2]], color=self.colors[i], label=self.labels[i])
+
+        self.axes.set_xlabel("X Axis")
+        self.axes.set_ylabel("Y Axis")
+        self.axes.set_zlabel("Z Axis")
+        self.axes.set_xlim(-self.x_lim, self.x_lim)
+        self.axes.set_ylim(-self.y_lim, self.y_lim)
+        self.axes.set_zlim(-self.z_lim, self.z_lim)
+        self.axes.legend()
 
         plt.pause(0.01)

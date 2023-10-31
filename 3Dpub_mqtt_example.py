@@ -8,13 +8,13 @@ i =0
 j = 0
 dt = 0.01  # Time step
 frequency = 1.0  # Frequency of the sine wave
-amplitude = 1.0 
+amplitude = .3 
 while(True):
     a = amplitude * np.sin(2 * np.pi * frequency * i * dt)
-    b = - amplitude * np.sin(2 * np.pi * frequency * i * dt)
+    b = amplitude * np.cos(2 * np.pi * frequency * i * dt)
 
     i +=1
     j -=2
-    publisher.publish_data([b, 0,a, 0, -b, b])# b, 0, 0])
+    publisher.publish_data([b, a, 0], [a, b, 0])# b, 0, 0])
 
     time.sleep(0.05)
